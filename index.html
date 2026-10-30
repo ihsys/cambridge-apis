@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Interactivo - Cambridge API</title>
+    <!-- 1. Librería Principal de FullCalendar -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <!-- 2. Paquete de Idiomas (Incluye Español) -->
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/locales-all.global.min.js'></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .card { max-width: 1000px; margin: 0 auto 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #005587; margin-top: 0; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+        .form-group input, .form-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;}
+        .required::after { content: ' *'; color: #e74c3c; }
+        button { background-color: #005587; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; height: 35px;}
+        button:hover { background-color: #003a5d; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        
+        #calendar { margin-top: 20px; min-height: 600px; }
+        .leyenda { display: flex; gap: 15px; margin-top: 15px; font-size: 14px; font-weight: bold; padding-bottom: 15px; border-bottom: 1px solid #eee; flex-wrap: wrap;}
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Consultar Calendario de Exámenes Cambridge</h2>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Token OAuth:</label>
+                <button id="btnToken">1. Validar Acceso</button>
+            </div>
+            
+            <div class="form-group" id="boxCentre">
+                <label class="required">Centro:</label>
+                <input type="text" id="centreNumber" value="MX026" style="width: 80px;">
+            </div>
+
+            <div class="form-group">
+                <label class="required">Tipo de Examen:</label>
+                <select id="examType">
+                    <option value="SCHEDULED">SCHEDULED</option>
+                    <option value="ON-DEMAND">ON-DEMAND</option>
+                    <option value="COMPUTER BASED">COMPUTER BASED</option>
+                    <option value="DIGITAL">DIGITAL</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row" id="dynamicFields">
+            <div class="form-group" id="boxAssessment">
+                <label id="lblAssessment">Código Eval.:</label>
+                <input type="text" id="assessmentCode" placeholder="Ej. D401" style="width: 90px;">
+            </div>
+            
+            <div class="form-group" id="boxYear">
+                <label id="lblYear">Año:</label>
+                <input type="number" id="year" value="2027" style="width: 70px;">
+            </div>
+
+            <div class="form-group" id="boxSitting">
+                <label id="lblSitting">Turno:</label>
+                <select id="sitting" style="width: 80px;">
+                    <option value="">Todos</option>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                    <option value="EV">EV</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="boxStartDate">
+                <label id="lblStartDate">Fecha Inicio:</label>
+                <input type="date" id="startDate" style="width: 140px;">
+            </div>
+
+            <div class="form-group" id="boxEndDate">
+                <label id="lblEndDate">Fecha Fin:</label>
+                <input type="date" id="endDate" style="width: 140px;">
+            </div>
+
+            <div class="form-group">
+                <button id="btnCalendar" disabled>2. Cargar Calendario</button>
+            </div>
+        </div>
+
+        <!-- Leyenda Actualizada -->
+        <div class="leyenda">
+            <span><span class="dot" style="background-color: #e74c3c;"></span>Examen Principal</span>
+            <span><span class="dot" style="background-color: #e67e22;"></span>Inscripción</span>
+            <span><span class="dot" style="background-color: #3498db;"></span>Speaking</span>
+            <span><span class="dot" style="background-color: #2ecc71;"></span>Resultados</span>
+            <span><span class="dot" style="background-color: #9b59b6;"></span>Certificados</span>
+        </div>
+
+        <div id="calendar"></div>
+    </div>
+
+    <script>
+        let currentAccessToken = null;
+        let calendar = null;
+
+        const configParams = {
+            'ON-DEMAND': { show: ['boxAssessment', 'boxStartDate', 'boxEndDate'], required: ['lblAssessment', 'lblStartDate', 'lblEndDate'] },
+            'SCHEDULED': { show: ['boxAssessment', 'boxYear', 'boxSitting'], required: [] },
+            'COMPUTER BASED': { show: ['boxAssessment', 'boxYear', 'boxSitting'], required: [] },
+            'DIGITAL': { show: ['boxAssessment', 'boxYear', 'boxStartDate', 'boxEndDate'], required: ['lblAssessment', 'lblYear', 'lblStartDate', 'lblEndDate'] }
+        };
+
+        document.getElementById('examType').addEventListener('change', updateFields);
+
+        function updateFields() {
+            const type = document.getElementById('examType').value;
+            const config = configParams[type];
+
+            const allBoxes = ['boxAssessment', 'boxYear', 'boxSitting', 'boxStartDate', 'boxEndDate'];
+            const allLabels = ['lblAssessment', 'lblYear', 'lblSitting', 'lblStartDate', 'lblEndDate'];
+
+            allBoxes.forEach(box => document.getElementById(box).classList.add('hidden'));
+            allLabels.forEach(lbl => document.getElementById(lbl).classList.remove('required'));
+
+            config.show.forEach(box => document.getElementById(box).classList.remove('hidden'));
+            config.required.forEach(lbl => document.getElementById(lbl).classList.add('required'));
+        }
+
+        updateFields();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es', // El español ahora se aplicará correctamente gracias al script locales-all
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' }
+            });
+            calendar.render();
+        });
+
+        document.getElementById('btnToken').addEventListener('click', async () => {
+            const btn = document.getElementById('btnToken');
+            btn.textContent = 'Validando...';
+            try {
+                const res = await fetch('get_token.php');
+                const data = await res.json();
+                if (data.access_token) {
+                    currentAccessToken = data.access_token;
+                    btn.textContent = 'Acceso OK ✓';
+                    btn.style.backgroundColor = '#2ecc71';
+                    document.getElementById('btnCalendar').disabled = false;
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                btn.style.backgroundColor = '#e74c3c';
+            }
+        });
+
+        function formatToIso(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            return null;
+        }
+
+        // Convierte YYYY-MM-DD a DD/MM/YYYY
+        function formatDateForApi(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        // Suma 1 día a la fecha final (Requisito de FullCalendar para rangos)
+        function addOneDayForEndRange(isoDateStr) {
+            if (!isoDateStr) return null;
+            // Se usa T00:00:00 para evitar problemas de zona horaria al sumar días
+            const d = new Date(isoDateStr + 'T00:00:00');
+            d.setDate(d.getDate() + 1);
+            return d.toISOString().split('T')[0];
+        }
+
+        document.getElementById('btnCalendar').addEventListener('click', async () => {
+            const type = document.getElementById('examType').value;
+            const config = configParams[type];
+            
+            if (!document.getElementById('centreNumber').value) { alert("El Número de Centro es obligatorio."); return; }
+            if (config.required.includes('lblAssessment') && !document.getElementById('assessmentCode').value) { alert("Código de Evaluación obligatorio."); return; }
+            if (config.required.includes('lblStartDate') && !document.getElementById('startDate').value) { alert("Fecha de Inicio obligatoria."); return; }
+
+            const btn = document.getElementById('btnCalendar');
+            btn.textContent = 'Cargando...';
+
+            const payload = {
+                access_token: currentAccessToken,
+                centreNumber: document.getElementById('centreNumber').value,
+                examType: type,
+                assessmentCode: document.getElementById('boxAssessment').classList.contains('hidden') ? '' : document.getElementById('assessmentCode').value,
+                year: document.getElementById('boxYear').classList.contains('hidden') ? '' : document.getElementById('year').value,
+                sitting: document.getElementById('boxSitting').classList.contains('hidden') ? '' : document.getElementById('sitting').value,
+                startDate: document.getElementById('boxStartDate').classList.contains('hidden') ? '' : formatDateForApi(document.getElementById('startDate').value),
+                endDate: document.getElementById('boxEndDate').classList.contains('hidden') ? '' : formatDateForApi(document.getElementById('endDate').value)
+            };
+
+            try {
+                const response = await fetch('get_calendar.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.examCalendarList) {
+                    calendar.removeAllEvents();
+                    let firstEventDate = null;
+
+                    data.examCalendarList.forEach(exam => {
+                        const title = exam.assessmentCodeDescription + (exam.sitting ? ` (${exam.sitting})` : '');
+
+                        // 1. Examen (Día único)
+                        const examDate = formatToIso(exam.keyAssessmentDate);
+                        if (examDate) {
+                            calendar.addEvent({ title: 'Examen: ' + title, start: examDate, color: '#e74c3c', allDay: true });
+                            if(!firstEventDate) firstEventDate = examDate;
+                        }
+
+                        // 2. Cierre de Inscripción (Día único)
+                        const entryDate = formatToIso(exam.entryClosingDate);
+                        if (entryDate) calendar.addEvent({ title: 'Cierre Insc.: ' + title, start: entryDate, color: '#e67e22', allDay: true });
+
+                        // 3. Speaking (Rango)
+                        const speakingStart = formatToIso(exam.speakingWindowStartDate);
+                        const speakingEnd = formatToIso(exam.speakingWindowFinishDate);
+                        if (speakingStart) {
+                            if (speakingEnd && speakingStart !== speakingEnd) {
+                                calendar.addEvent({ title: 'Speaking: ' + title, start: speakingStart, end: addOneDayForEndRange(speakingEnd), color: '#3498db' });
+                            } else {
+                                calendar.addEvent({ title: 'Speaking: ' + title, start: speakingStart, color: '#3498db', allDay: true });
+                            }
+                        }
+
+                        // 4. Resultados (Rango de Inicio a Fin)
+                        const resultsStart = formatToIso(exam.resultsIssueStartDate);
+                        const resultsEnd = formatToIso(exam.resultsIssueFinishDate);
+                        if (resultsStart) {
+                            if (resultsEnd && resultsStart !== resultsEnd) {
+                                calendar.addEvent({ title: 'Resultados: ' + title, start: resultsStart, end: addOneDayForEndRange(resultsEnd), color: '#2ecc71' });
+                            } else {
+                                calendar.addEvent({ title: 'Resultados: ' + title, start: resultsStart, color: '#2ecc71', allDay: true });
+                            }
+                        }
+
+                        // 5. Despacho de Certificados (Día único)
+                        const certDate = formatToIso(exam.certificateDespatchStartsDate);
+                        if (certDate) {
+                            calendar.addEvent({ title: 'Certificados: ' + title, start: certDate, color: '#9b59b6', allDay: true });
+                        }
+                    });
+
+                    if(firstEventDate) calendar.gotoDate(firstEventDate);
+                } else {
+                    alert("No se encontraron resultados o hubo un error en la búsqueda.");
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                btn.textContent = '2. Cargar Calendario';
+            }
+        });
+    </script>
+</body>
+</html>

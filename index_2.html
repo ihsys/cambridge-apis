@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Mockup - Cambridge API</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .card { max-width: 700px; margin: 0 auto 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #005587; margin-top: 0; }
+        button { background-color: #005587; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        button:hover { background-color: #003a5d; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 13px; }
+        .success { border-left: 5px solid #4CAF50; }
+        .error { border-left: 5px solid #f44336; }
+        
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: inline-block; width: 150px; font-weight: bold; }
+        .form-group input, .form-group select { padding: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+
+    <!-- Tarjeta 1: Autenticación -->
+    <div class="card">
+        <h2>1. Obtener Token OAuth</h2>
+        <button id="btnToken">Generar Token</button>
+        <span id="tokenStatus" style="margin-left: 10px; font-weight: bold; color: #d32f2f;">Token No Generado</span>
+    </div>
+
+    <!-- Tarjeta 2: Calendario de Exámenes -->
+    <div class="card">
+        <h2>2. Consultar Calendario de Exámenes</h2>
+        <div class="form-group">
+            <label>Número de Centro:</label>
+            <input type="text" id="centreNumber" value="MX026">
+        </div>
+        <div class="form-group">
+            <label>Tipo de Examen:</label>
+            <select id="examType">
+                <option value="SCHEDULED">SCHEDULED</option>
+                <option value="ON-DEMAND">ON-DEMAND</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Código de Evaluación:</label>
+            <input type="text" id="assessmentCode" value="D401" placeholder="Ej. D401">
+        </div>
+        <div class="form-group">
+            <label>Año:</label>
+            <input type="text" id="year" value="2027">
+        </div>
+        <div class="form-group">
+            <label>Turno:</label>
+            <select id="sitting">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+                <option value="EV">EV</option>
+            </select>
+        </div>
+        
+        <button id="btnCalendar" style="margin-top: 15px;" disabled>Consultar Calendario</button>
+        
+        <h4 style="margin-bottom: 10px;">Respuesta del Calendario:</h4>
+        <pre id="jsonOutput">Esperando consulta...</pre>
+    </div>
+
+    <script>
+        let currentAccessToken = null;
+
+        // --- FLUJO 1: OBTENER TOKEN ---
+        document.getElementById('btnToken').addEventListener('click', async () => {
+            const statusText = document.getElementById('tokenStatus');
+            const btnCalendar = document.getElementById('btnCalendar');
+            
+            statusText.textContent = "Procesando...";
+            statusText.style.color = "#ff9800";
+
+            try {
+                const response = await fetch('get_token.php');
+                const data = await response.json();
+
+                if (data.access_token) {
+                    currentAccessToken = data.access_token;
+                    statusText.textContent = "¡Token Generado y Válido!";
+                    statusText.style.color = "#4CAF50";
+                    btnCalendar.disabled = false; // Habilitar botón de calendario
+                } else {
+                    statusText.textContent = "Error al generar token";
+                    statusText.style.color = "#f44336";
+                }
+            } catch (error) {
+                statusText.textContent = "Fallo de conexión";
+                console.error(error);
+            }
+        });
+
+        // --- FLUJO 2: CONSULTAR CALENDARIO ---
+        document.getElementById('btnCalendar').addEventListener('click', async () => {
+            const btn = document.getElementById('btnCalendar');
+            const output = document.getElementById('jsonOutput');
+            
+            btn.textContent = 'Consultando...';
+            btn.disabled = true;
+            output.className = '';
+
+            // Recoger los datos del formulario
+            const payload = {
+                access_token: currentAccessToken,
+                centreNumber: document.getElementById('centreNumber').value,
+                examType: document.getElementById('examType').value,
+                assessmentCode: document.getElementById('assessmentCode').value,
+                year: document.getElementById('year').value,
+                sitting: document.getElementById('sitting').value
+            };
+
+            try {
+                // Enviar petición POST a nuestro backend local
+                const response = await fetch('get_calendar.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                output.textContent = JSON.stringify(data, null, 4);
+
+                if (response.ok) {
+                    output.classList.add('success');
+                } else {
+                    output.classList.add('error');
+                }
+
+            } catch (error) {
+                output.classList.add('error');
+                output.textContent = "Error interno: " + error.message;
+            } finally {
+                btn.textContent = 'Consultar Calendario';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Interactivo - Cambridge API</title>
+    <!-- Cargar FullCalendar desde CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .card { max-width: 1000px; margin: 0 auto 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #005587; margin-top: 0; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .form-group input, .form-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #005587; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; height: 35px;}
+        button:hover { background-color: #003a5d; }
+        
+        /* Contenedor del calendario */
+        #calendar { margin-top: 20px; min-height: 600px; }
+        
+        /* Leyenda de colores */
+        .leyenda { display: flex; gap: 15px; margin-top: 15px; font-size: 14px; font-weight: bold; }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Consultar Calendario de Exámenes Cambridge</h2>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Token OAuth (Simulado):</label>
+                <button id="btnToken">1. Validar Acceso</button>
+            </div>
+            <div class="form-group">
+                <label>Centro:</label>
+                <input type="text" id="centreNumber" value="MX026" style="width: 80px;">
+            </div>
+            <div class="form-group">
+                <label>Año:</label>
+                <input type="text" id="year" value="2027" style="width: 70px;">
+            </div>
+            <div class="form-group">
+                <label>Tipo:</label>
+                <select id="examType">
+                    <option value="SCHEDULED">SCHEDULED</option>
+                    <option value="ON-DEMAND">ON-DEMAND</option>
+					<option value="COMPUTER BASED">COMPUTER BASED</option>
+					<option value="DIGITAL">DIGITAL</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button id="btnCalendar" disabled>2. Cargar Calendario</button>
+            </div>
+        </div>
+
+        <div class="leyenda">
+            <span><span class="dot" style="background-color: #e74c3c;"></span>Examen Principal</span>
+            <span><span class="dot" style="background-color: #e67e22;"></span>Cierre de Inscripción</span>
+            <span><span class="dot" style="background-color: #3498db;"></span>Ventana Speaking</span>
+            <span><span class="dot" style="background-color: #2ecc71;"></span>Entrega de Resultados</span>
+        </div>
+
+        <!-- El Calendario se dibujará aquí -->
+        <div id="calendar"></div>
+    </div>
+
+    <script>
+        let currentAccessToken = null;
+        let calendar = null;
+
+        // Inicializar FullCalendar vacío al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listMonth'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    month: 'Mes',
+                    week: 'Semana',
+                    list: 'Lista'
+                }
+            });
+            calendar.render();
+        });
+
+        // 1. Obtener Token
+        document.getElementById('btnToken').addEventListener('click', async () => {
+            const btn = document.getElementById('btnToken');
+            btn.textContent = 'Validando...';
+            try {
+                const res = await fetch('get_token.php');
+                const data = await res.json();
+                if (data.access_token) {
+                    currentAccessToken = data.access_token;
+                    btn.textContent = 'Acceso OK ✓';
+                    btn.style.backgroundColor = '#2ecc71';
+                    document.getElementById('btnCalendar').disabled = false;
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                btn.style.backgroundColor = '#e74c3c';
+            }
+        });
+
+        // Función Helper para convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+        function formatToIso(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            return null;
+        }
+
+        // 2. Consultar y Poblar Calendario
+        document.getElementById('btnCalendar').addEventListener('click', async () => {
+            const btn = document.getElementById('btnCalendar');
+            btn.textContent = 'Cargando...';
+
+            const payload = {
+                access_token: currentAccessToken,
+                centreNumber: document.getElementById('centreNumber').value,
+                year: document.getElementById('year').value,
+                examType: document.getElementById('examType').value,
+                assessmentCode: '', // Se deja vacío para traer TODOS los exámenes del año
+                sitting: '' 
+            };
+
+            try {
+                const response = await fetch('get_calendar.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.examCalendarList) {
+                    // Limpiar eventos anteriores
+                    calendar.removeAllEvents();
+                    let firstEventDate = null;
+
+                    // Mapear el JSON de Cambridge a Eventos del Calendario
+                    data.examCalendarList.forEach(exam => {
+                        const title = exam.assessmentCodeDescription + ' (' + exam.sitting + ')';
+
+                        // A. Día del Examen Principal (Rojo)
+                        const examDate = formatToIso(exam.keyAssessmentDate);
+                        if (examDate) {
+                            calendar.addEvent({ title: 'Examen: ' + title, start: examDate, color: '#e74c3c', allDay: true });
+                            if(!firstEventDate) firstEventDate = examDate;
+                        }
+
+                        // B. Cierre de Inscripción (Naranja)
+                        const entryDate = formatToIso(exam.entryClosingDate);
+                        if (entryDate) {
+                            calendar.addEvent({ title: 'Cierre Inscripción: ' + title, start: entryDate, color: '#e67e22', allDay: true });
+                        }
+
+                        // C. Ventana de Speaking (Azul)
+                        const speakingStart = formatToIso(exam.speakingWindowStartDate);
+                        const speakingEnd = formatToIso(exam.speakingWindowFinishDate);
+                        if (speakingStart && speakingEnd) {
+                            // FullCalendar requiere que el end date sea exclusivo, por lo que a veces se suma 1 día, pero para vista mensual esto funciona bien.
+                            calendar.addEvent({ title: 'Speaking: ' + title, start: speakingStart, end: speakingEnd, color: '#3498db' });
+                        }
+
+                        // D. Emisión de Resultados (Verde)
+                        const resultsDate = formatToIso(exam.resultsIssueStartDate);
+                        if (resultsDate) {
+                            calendar.addEvent({ title: 'Resultados: ' + title, start: resultsDate, color: '#2ecc71', allDay: true });
+                        }
+                    });
+
+                    // Navegar el calendario hacia el mes del primer evento encontrado
+                    if(firstEventDate) {
+                        calendar.gotoDate(firstEventDate);
+                    }
+                }
+            } catch (error) {
+                console.error("Error al cargar el calendario:", error);
+            } finally {
+                btn.textContent = '2. Cargar Calendario';
+            }
+        });
+    </script>
+</body>
+</html>
