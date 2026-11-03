@@ -12,14 +12,14 @@
         .form-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-end; flex-wrap: wrap; }
         .form-group { display: flex; flex-direction: column; }
         .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 13px; }
-        .form-group input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;}
-        button, .btn-link { background-color: #005587; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; height: 35px; text-decoration: none; display: inline-flex; align-items: center;}
+        .form-group input, .form-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; height: 35px; box-sizing: border-box;}
+        .required::after { content: ' *'; color: #e74c3c; }
+        button, .btn-link { background-color: #005587; color: white; border: none; padding: 0 20px; cursor: pointer; border-radius: 5px; font-weight: bold; height: 35px; text-decoration: none; display: inline-flex; align-items: center; box-sizing: border-box;}
         button:hover, .btn-link:hover { background-color: #003a5d; }
         button:disabled { background-color: #cccccc; cursor: not-allowed; }
         .btn-back { background-color: #7f8c8d; }
         .btn-back:hover { background-color: #636e72; }
         
-        /* Estilos para la tabla de resultados */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px;}
         th { background-color: #005587; color: white; }
@@ -35,6 +35,7 @@
             <a href="index.html" class="btn-link btn-back">⬅ Volver al Calendario</a>
         </div>
         
+        <!-- Fila 1: Datos principales -->
         <div class="form-row">
             <div class="form-group">
                 <label>Token OAuth:</label>
@@ -42,18 +43,45 @@
             </div>
             
             <div class="form-group">
-                <label>Centro:</label>
+                <label class="required">Centro:</label>
                 <input type="text" id="centreNumber" value="MX026" style="width: 80px;">
             </div>
 
             <div class="form-group">
-                <label>No. de Candidato (Candidate Number):</label>
-                <input type="text" id="candidateNumber" placeholder="Ej. 1234" style="width: 200px;">
+                <label class="required">No. de Candidato:</label>
+                <input type="text" id="candidateNumber" placeholder="Ej. 1234" style="width: 140px;">
             </div>
 
             <div class="form-group">
                 <label>Código Evaluación:</label>
-                <input type="text" id="assessmentCode" placeholder="Ej. D401" style="width: 120px;">
+                <input type="text" id="assessmentCode" placeholder="Ej. D401" style="width: 130px;">
+            </div>
+        </div>
+
+        <!-- Fila 2: Nuevos filtros obligatorios/opcionales -->
+        <div class="form-row">
+            <div class="form-group">
+                <label class="required">Fecha Examen (Key Assessment):</label>
+                <input type="date" id="keyAssessmentDay" style="width: 220px;">
+            </div>
+
+            <div class="form-group">
+                <label>Turno (Sitting):</label>
+                <select id="sitting" style="width: 100px;">
+                    <option value="">Todos</option>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                    <option value="EV">EV</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Método de Entrega:</label>
+                <select id="deliveryMethod" style="width: 120px;">
+                    <option value="">Todos</option>
+                    <option value="PB">PB (Paper Based)</option>
+                    <option value="CB">CB (Computer Based)</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -83,12 +111,10 @@
     <script>
         let currentAccessToken = null;
 
-        // 1. Reutilizamos la misma lógica para obtener el Token
         document.getElementById('btnToken').addEventListener('click', async () => {
             const btn = document.getElementById('btnToken');
             btn.textContent = 'Validando...';
             try {
-                // Llamamos al mismo archivo get_token.php que ya tienes
                 const res = await fetch('get_token.php');
                 const data = await res.json();
                 if (data.access_token) {
@@ -103,13 +129,18 @@
             }
         });
 
-        // 2. Lógica para buscar resultados
         document.getElementById('btnResults').addEventListener('click', async () => {
             const btn = document.getElementById('btnResults');
-            const candidateNumber = document.getElementById('candidateNumber').value;
-            const centreNumber = document.getElementById('centreNumber').value;
             
-            if (!candidateNumber) { alert("Ingresa un número de candidato."); return; }
+            // Recolectar valores
+            const centreNumber = document.getElementById('centreNumber').value;
+            const candidateNumber = document.getElementById('candidateNumber').value;
+            const keyAssessmentDay = document.getElementById('keyAssessmentDay').value;
+            
+            // Validar obligatorios
+            if (!centreNumber) { alert("Ingresa el Número de Centro."); return; }
+            if (!candidateNumber) { alert("Ingresa un Número de Candidato."); return; }
+            if (!keyAssessmentDay) { alert("La Fecha de Examen (Key Assessment Day) es obligatoria."); return; }
 
             btn.textContent = 'Buscando...';
 
@@ -117,11 +148,13 @@
                 access_token: currentAccessToken,
                 centreNumber: centreNumber,
                 candidateNumber: candidateNumber,
-                assessmentCode: document.getElementById('assessmentCode').value
+                assessmentCode: document.getElementById('assessmentCode').value,
+                keyAssessmentDay: keyAssessmentDay, // Ya viene en YYYY-MM-DD
+                sitting: document.getElementById('sitting').value,
+                deliveryMethod: document.getElementById('deliveryMethod').value
             };
 
             try {
-                // Aquí llamaremos a un nuevo archivo PHP que hará el puente con la API de Resultados
                 const response = await fetch('get_results.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -129,10 +162,8 @@
                 });
                 
                 const data = await response.json();
-                
-                // Renderizar la tabla (ajustar las variables según el JSON exacto de Cambridge)
                 const tbody = document.getElementById('resultsBody');
-                tbody.innerHTML = ''; // Limpiar tabla anterior
+                tbody.innerHTML = ''; 
                 
                 if (data && data.results && data.results.length > 0) {
                     document.getElementById('resultsContainer').style.display = 'block';
@@ -149,7 +180,7 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    alert("No se encontraron resultados para este candidato.");
+                    alert("No se encontraron resultados para este candidato con los filtros seleccionados.");
                     document.getElementById('resultsContainer').style.display = 'none';
                 }
             } catch (error) {
