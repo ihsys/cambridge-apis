@@ -7,7 +7,7 @@ $client_id = getenv('RESULTS_CLIENT_ID');
 $client_secret = getenv('RESULTS_CLIENT_SECRET');
 
 // URL de autenticación de Cambridge (verifica si usan la misma o una URL de testing diferente)
-$auth_url = "https://authenticate.cambridgeenglish.org/oauth2/token";
+$auth_url = "https://apis.cambridgeassessment.org.uk/v1/cambridge.id/token";
 
 $ch = curl_init($auth_url);
 
