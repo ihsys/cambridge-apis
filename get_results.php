@@ -22,8 +22,8 @@ if (empty($access_token)) {
 // ========================================================================
 // Construcción dinámica de la URL con los parámetros obligatorios
 // ========================================================================
-$apiUrl = "https://api.cambridgeenglish.org/v1/candidates/results?centreNumber={$centreNumber}&candidateNumber={$candidateNumber}";
-
+//$apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?deliveryMethod={$deliveryMethod}&assessmentCode={$assessmentCode}&keyAssessmentDay={$keyAssessmentDay}&sitting={$sitting}&centreNumber={$centreNumber}&candidateNumber={$candidateNumber}";
+$apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?centreCandidateNumber={$centreCandidateNumber}&assessmentCode={$assessmentCode}&keyAssessmentDay={$keyAssessmentDay}&sitting={$sitting}&deliveryMethod={$deliveryMethod}";
 // Parámetro obligatorio agregado
 if (!empty($keyAssessmentDay)) {
     $apiUrl .= "&keyAssessmentDay={$keyAssessmentDay}";
