@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Candidatos - Cambridge API</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .card { max-width: 1000px; margin: 0 auto 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #005587; margin-top: 0; display: inline-block;}
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+        .form-group input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;}
+        button, .btn-link { background-color: #005587; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; height: 35px; text-decoration: none; display: inline-flex; align-items: center;}
+        button:hover, .btn-link:hover { background-color: #003a5d; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .btn-back { background-color: #7f8c8d; }
+        .btn-back:hover { background-color: #636e72; }
+        
+        /* Estilos para la tabla de resultados */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px;}
+        th { background-color: #005587; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .score-badge { padding: 5px 10px; border-radius: 15px; font-weight: bold; color: white; background-color: #2ecc71;}
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="header-actions">
+            <h2>Consulta de Resultados (Candidate Results)</h2>
+            <a href="index.html" class="btn-link btn-back">⬅ Volver al Calendario</a>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Token OAuth:</label>
+                <button id="btnToken">1. Validar Acceso</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Centro:</label>
+                <input type="text" id="centreNumber" value="MX026" style="width: 80px;">
+            </div>
+
+            <div class="form-group">
+                <label>No. de Candidato (Candidate Number):</label>
+                <input type="text" id="candidateNumber" placeholder="Ej. 1234" style="width: 200px;">
+            </div>
+
+            <div class="form-group">
+                <label>Código Evaluación:</label>
+                <input type="text" id="assessmentCode" placeholder="Ej. D401" style="width: 120px;">
+            </div>
+
+            <div class="form-group">
+                <button id="btnResults" disabled>2. Buscar Resultados</button>
+            </div>
+        </div>
+
+        <div id="resultsContainer" style="display: none;">
+            <h3>Resultados Encontrados:</h3>
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Candidato</th>
+                        <th>Examen</th>
+                        <th>Fecha</th>
+                        <th>Puntaje Total</th>
+                        <th>Grado / Resultado</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <!-- Los resultados se inyectarán aquí -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let currentAccessToken = null;
+
+        // 1. Reutilizamos la misma lógica para obtener el Token
+        document.getElementById('btnToken').addEventListener('click', async () => {
+            const btn = document.getElementById('btnToken');
+            btn.textContent = 'Validando...';
+            try {
+                // Llamamos al mismo archivo get_token.php que ya tienes
+                const res = await fetch('get_token.php');
+                const data = await res.json();
+                if (data.access_token) {
+                    currentAccessToken = data.access_token;
+                    btn.textContent = 'Acceso OK ✓';
+                    btn.style.backgroundColor = '#2ecc71';
+                    document.getElementById('btnResults').disabled = false;
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                btn.style.backgroundColor = '#e74c3c';
+            }
+        });
+
+        // 2. Lógica para buscar resultados
+        document.getElementById('btnResults').addEventListener('click', async () => {
+            const btn = document.getElementById('btnResults');
+            const candidateNumber = document.getElementById('candidateNumber').value;
+            const centreNumber = document.getElementById('centreNumber').value;
+            
+            if (!candidateNumber) { alert("Ingresa un número de candidato."); return; }
+
+            btn.textContent = 'Buscando...';
+
+            const payload = {
+                access_token: currentAccessToken,
+                centreNumber: centreNumber,
+                candidateNumber: candidateNumber,
+                assessmentCode: document.getElementById('assessmentCode').value
+            };
+
+            try {
+                // Aquí llamaremos a un nuevo archivo PHP que hará el puente con la API de Resultados
+                const response = await fetch('get_results.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                // Renderizar la tabla (ajustar las variables según el JSON exacto de Cambridge)
+                const tbody = document.getElementById('resultsBody');
+                tbody.innerHTML = ''; // Limpiar tabla anterior
+                
+                if (data && data.results && data.results.length > 0) {
+                    document.getElementById('resultsContainer').style.display = 'block';
+                    
+                    data.results.forEach(res => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${res.candidateName || 'N/A'} (${res.candidateNumber})</td>
+                            <td>${res.assessmentName || res.assessmentCode}</td>
+                            <td>${res.examDate || 'N/A'}</td>
+                            <td><span class="score-badge">${res.overallScore || '-'}</span></td>
+                            <td><strong>${res.grade || res.result || 'Pendiente'}</strong></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    alert("No se encontraron resultados para este candidato.");
+                    document.getElementById('resultsContainer').style.display = 'none';
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error al conectar con la API de resultados.");
+            } finally {
+                btn.textContent = '2. Buscar Resultados';
+            }
+        });
+    </script>
+</body>
+</html>
