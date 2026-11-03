@@ -25,6 +25,18 @@
         th { background-color: #005587; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .score-badge { padding: 5px 10px; border-radius: 15px; font-weight: bold; color: white; background-color: #2ecc71;}
+
+        /* --- ESTILOS DE LA CONSOLA DE DEBUG --- */
+        .debug-console { margin-top: 40px; background-color: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .console-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; }
+        .console-header h3 { margin: 0; color: #4CAF50; font-size: 15px; }
+        .btn-clear { background-color: #444; height: 25px; padding: 0 10px; font-size: 12px; }
+        .log-container { max-height: 400px; overflow-y: auto; }
+        .log-entry { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #333; }
+        .log-time { color: #569cd6; font-size: 11px; margin-bottom: 5px;}
+        .log-title { font-weight: bold; color: #ce9178; margin-bottom: 5px; }
+        .log-title.error { color: #f44336; }
+        pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; color: #9cdcfe; }
     </style>
 </head>
 <body>
@@ -79,8 +91,8 @@
                 <label>Método de Entrega:</label>
                 <select id="deliveryMethod" style="width: 120px;">
                     <option value="">Todos</option>
-                    <option value="PB">PB (Paper Based)</option>
-                    <option value="CB">CB (Computer Based)</option>
+                    <option value="PB">PB (Paper)</option>
+                    <option value="CB">CB (Computer)</option>
                 </select>
             </div>
 
@@ -106,39 +118,80 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- CONSOLA DE DEBUG -->
+        <div class="debug-console">
+            <div class="console-header">
+                <h3>🛠️ Consola de Depuración (JSON)</h3>
+                <button class="btn-clear" onclick="document.getElementById('logContainer').innerHTML = ''">Limpiar Consola</button>
+            </div>
+            <div id="logContainer" class="log-container">
+                <!-- Los logs aparecerán aquí -->
+            </div>
+        </div>
     </div>
 
     <script>
         let currentAccessToken = null;
 
+        // --- FUNCIÓN HELPER PARA LA CONSOLA ---
+        function logToConsole(title, data, isError = false) {
+            const container = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const titleClass = isError ? 'log-title error' : 'log-title';
+            const icon = isError ? '❌' : '✅';
+            
+            let formattedData = '';
+            try {
+                formattedData = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+            } catch (e) {
+                formattedData = data;
+            }
+
+            logEntry.innerHTML = `
+                <div class="log-time">[${time}]</div>
+                <div class="${titleClass}">${icon} ${title}</div>
+                <pre>${formattedData}</pre>
+            `;
+            
+            // Inserta el nuevo log al principio para no tener que hacer scroll hacia abajo
+            container.prepend(logEntry);
+        }
+        // ---------------------------------------
+
         document.getElementById('btnToken').addEventListener('click', async () => {
             const btn = document.getElementById('btnToken');
             btn.textContent = 'Validando...';
             try {
-                // Cambio clave: ahora llama al token específico de resultados
-                const res = await fetch('get_token_results.php'); 
+                const res = await fetch('get_token_results.php');
                 const data = await res.json();
+                
+                // Imprimir en consola de debug
+                logToConsole('Respuesta Token OAuth', data, !data.access_token);
+
                 if (data.access_token) {
                     currentAccessToken = data.access_token;
                     btn.textContent = 'Acceso OK ✓';
                     btn.style.backgroundColor = '#2ecc71';
                     document.getElementById('btnResults').disabled = false;
                 }
-            } catch (e) {
+            } catch (error) {
                 btn.textContent = 'Error';
                 btn.style.backgroundColor = '#e74c3c';
+                logToConsole('Error JS al pedir Token', error.message, true);
             }
         });
 
         document.getElementById('btnResults').addEventListener('click', async () => {
             const btn = document.getElementById('btnResults');
             
-            // Recolectar valores
             const centreNumber = document.getElementById('centreNumber').value;
             const candidateNumber = document.getElementById('candidateNumber').value;
             const keyAssessmentDay = document.getElementById('keyAssessmentDay').value;
             
-            // Validar obligatorios
             if (!centreNumber) { alert("Ingresa el Número de Centro."); return; }
             if (!candidateNumber) { alert("Ingresa un Número de Candidato."); return; }
             if (!keyAssessmentDay) { alert("La Fecha de Examen (Key Assessment Day) es obligatoria."); return; }
@@ -150,10 +203,13 @@
                 centreNumber: centreNumber,
                 candidateNumber: candidateNumber,
                 assessmentCode: document.getElementById('assessmentCode').value,
-                keyAssessmentDay: keyAssessmentDay, // Ya viene en YYYY-MM-DD
+                keyAssessmentDay: keyAssessmentDay,
                 sitting: document.getElementById('sitting').value,
                 deliveryMethod: document.getElementById('deliveryMethod').value
             };
+
+            // Imprimir payload enviado a PHP
+            logToConsole('Payload enviado a get_results.php', payload);
 
             try {
                 const response = await fetch('get_results.php', {
@@ -163,6 +219,10 @@
                 });
                 
                 const data = await response.json();
+                
+                // Imprimir respuesta de Cambridge en consola de debug
+                logToConsole('Respuesta de Candidate Results API', data, data.error ? true : false);
+
                 const tbody = document.getElementById('resultsBody');
                 tbody.innerHTML = ''; 
                 
@@ -181,11 +241,12 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    alert("No se encontraron resultados para este candidato con los filtros seleccionados.");
+                    alert("No se encontraron resultados para este candidato. Revisa la consola para más detalles.");
                     document.getElementById('resultsContainer').style.display = 'none';
                 }
             } catch (error) {
                 console.error(error);
+                logToConsole('Error JS al pedir Resultados', error.message, true);
                 alert("Error al conectar con la API de resultados.");
             } finally {
                 btn.textContent = '2. Buscar Resultados';
