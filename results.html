@@ -115,7 +115,8 @@
             const btn = document.getElementById('btnToken');
             btn.textContent = 'Validando...';
             try {
-                const res = await fetch('get_token.php');
+                // Cambio clave: ahora llama al token específico de resultados
+                const res = await fetch('get_token_results.php'); 
                 const data = await res.json();
                 if (data.access_token) {
                     currentAccessToken = data.access_token;
