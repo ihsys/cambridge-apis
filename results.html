@@ -274,7 +274,7 @@
                             candidatosAgrupados[idCandidato] = {
                                 fullName: `${res.candidateName} ${res.candidateFamilyName}`,
                                 candNumber: res.centreCandidateNumber,
-                                urn: res["URN - Reference Number"],
+                                //urn: res["URN - Reference Number"],
                                 prepCentre: res.preparationCentre || 'N/A',
                                 examName: res.qualification?.assessmentDescription || 'N/A',
                                 examDate: res.keyAssessmentDate || 'N/A',
@@ -318,12 +318,12 @@
                         tr.innerHTML = `
                             <td>
                                 <strong>${cand.fullName}</strong><br>
-                                <span style="font-size: 12px; color: #666;">No. ${cand.candNumber} | URN: ${cand.urn}</span>
+                                <span style="font-size: 12px; color: #666; font-style: italic;">No. ${cand.candNumber}</span>
                             </td>
                             <td>${cand.prepCentre}</td>
                             <td>
                                 ${cand.examName}<br>
-                                <span style="font-size: 12px; color: #666;">${cand.examDate}</span>
+                                <span style="font-size: 12px; color: #666; font-style: italic;">${cand.examDate}</span>
                             </td>
                             <td style="text-align: center;">
                                 <span class="score-badge" style="background-color: ${badgeColor}; font-size: 16px;">
@@ -332,7 +332,7 @@
                             </td>
                             <td>
                                 <strong>${cand.overallResult}</strong><br>
-                                <span style="font-size: 12px; color: #666;">CEFR: ${cand.cefrLevel}</span>
+                                <span style="font-size: 12px; color: #666; font-style: italic;">CEFR Level: ${cand.cefrLevel}</span>
                             </td>
                             <!-- Inyección de las 4 columnas de habilidades -->
                             <td style="text-align: center;"><strong>${cand.skills.Reading}</strong></td>
