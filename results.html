@@ -103,7 +103,7 @@
             </div>
         </div>
 
-        <!-- Fila 2: Nuevos filtros obligatorios/opcionales -->
+        <!-- Fila 2: Nuevos filtros obligatorios -->
         <div class="form-row">
             <div class="form-group">
                 <label class="required">Fecha Examen (Key Assessment):</label>
@@ -111,9 +111,9 @@
             </div>
 
             <div class="form-group">
-                <label>Turno (Sitting):</label>
+                <label class="required">Turno (Sitting):</label>
                 <select id="sitting" style="width: 100px;">
-                    <option value="">Todos</option>
+                    <option value="">Seleccione...</option>
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
                     <option value="EV">EV</option>
@@ -121,9 +121,9 @@
             </div>
 
             <div class="form-group">
-                <label>Método de Entrega:</label>
+                <label class="required">Método de Entrega:</label>
                 <select id="deliveryMethod" style="width: 120px;">
-                    <option value="">Todos</option>
+                    <option value="">Seleccione...</option>
                     <option value="PB">PB (Paper)</option>
                     <option value="CB">CB (Computer)</option>
                 </select>
@@ -223,25 +223,29 @@
             const btn = document.getElementById('btnResults');
             
             const centreNumber = document.getElementById('centreNumber').value;
-            const candidateNumber = document.getElementById('candidateNumber').value; // Ahora es opcional
-            const assessmentCode = document.getElementById('assessmentCode').value; // Ahora es obligatorio
+            const candidateNumber = document.getElementById('candidateNumber').value; 
+            const assessmentCode = document.getElementById('assessmentCode').value; 
             const keyAssessmentDay = document.getElementById('keyAssessmentDay').value;
+            const sitting = document.getElementById('sitting').value;
+            const deliveryMethod = document.getElementById('deliveryMethod').value;
             
-            // Validaciones actualizadas
+            // Validaciones estrictas basadas en la documentación de Cambridge
             if (!centreNumber) { alert("Ingresa el Número de Centro."); return; }
             if (!assessmentCode) { alert("El Código de Evaluación (Assessment Code) es obligatorio."); return; }
             if (!keyAssessmentDay) { alert("La Fecha de Examen (Key Assessment Day) es obligatoria."); return; }
+            if (!sitting) { alert("El Turno (Sitting) es obligatorio (AM, PM o EV)."); return; }
+            if (!deliveryMethod) { alert("El Método de Entrega (Delivery Method) es obligatorio (PB o CB)."); return; }
 
             btn.textContent = 'Buscando...';
 
             const payload = {
                 access_token: currentAccessToken,
                 centreNumber: centreNumber,
-                centreCandidateNumber: document.getElementById('candidateNumber').value, // <-- CAMBIO AQUÍ
+                centreCandidateNumber: candidateNumber, // Se enviará vacío si es opcional
                 assessmentCode: assessmentCode,
                 keyAssessmentDay: keyAssessmentDay,
-                sitting: document.getElementById('sitting').value,
-                deliveryMethod: document.getElementById('deliveryMethod').value
+                sitting: sitting,
+                deliveryMethod: deliveryMethod
             };
 
             logToConsole('Payload enviado a get_results.php', payload);
