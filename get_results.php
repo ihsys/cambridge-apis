@@ -20,24 +20,19 @@ if (empty($access_token)) {
 }
 
 // ========================================================================
-// Construcción dinámica de la URL con los parámetros obligatorios
+// Construcción dinámica de la URL con el endpoint real de Cambridge
 // ========================================================================
-//$apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?deliveryMethod={$deliveryMethod}&assessmentCode={$assessmentCode}&keyAssessmentDay={$keyAssessmentDay}&sitting={$sitting}&centreNumber={$centreNumber}&candidateNumber={$candidateNumber}";
-$apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?centreCandidateNumber={$centreCandidateNumber}&assessmentCode={$assessmentCode}&keyAssessmentDay={$keyAssessmentDay}&sitting={$sitting}&deliveryMethod={$deliveryMethod}";
-// Parámetro obligatorio agregado
+$apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?centreNumber={$centreNumber}";
+
+// Ahora candidateNumber se agrega dinámicamente solo si el usuario lo escribió
+if (!empty($candidateNumber)) {
+    $apiUrl .= "&candidateNumber={$candidateNumber}";
+}
 if (!empty($keyAssessmentDay)) {
     $apiUrl .= "&keyAssessmentDay={$keyAssessmentDay}";
 }
-
-// Parámetros opcionales agregados
 if (!empty($assessmentCode)) {
     $apiUrl .= "&assessmentCode={$assessmentCode}";
-}
-if (!empty($sitting)) {
-    $apiUrl .= "&sitting={$sitting}";
-}
-if (!empty($deliveryMethod)) {
-    $apiUrl .= "&deliveryMethod={$deliveryMethod}";
 }
 
 $ch = curl_init($apiUrl);

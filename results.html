@@ -255,10 +255,10 @@
                 const tbody = document.getElementById('resultsBody');
                 tbody.innerHTML = ''; 
                 
-                if (data && data.results && data.results.length > 0) {
+                if (data && data.candidateResults && data.candidateResults.length > 0) {
                     document.getElementById('resultsContainer').style.display = 'block';
                     
-                    data.results.forEach(res => {
+                    data.candidateResults.forEach(res => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${res.candidateName || 'N/A'} (${res.candidateNumber || '-'})</td>
