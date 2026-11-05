@@ -26,7 +26,7 @@ $apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?centreNumber={$
 
 // Ahora candidateNumber se agrega dinámicamente solo si el usuario lo escribió
 if (!empty($candidateNumber)) {
-    $apiUrl .= "&candidateNumber={$candidateNumber}";
+    $apiUrl .= "&centreCandidateNumber={$candidateNumber}";
 }
 if (!empty($keyAssessmentDay)) {
     $apiUrl .= "&keyAssessmentDay={$keyAssessmentDay}";
