@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Candidatos - Cambridge API</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .card { max-width: 1450px; margin: 0 auto 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { color: #005587; margin-top: 0; display: inline-block;}
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 13px; }
+        .form-group input, .form-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; height: 35px; box-sizing: border-box;}
+        .required::after { content: ' *'; color: #e74c3c; }
+        button, .btn-link { background-color: #005587; color: white; border: none; padding: 0 20px; cursor: pointer; border-radius: 5px; font-weight: bold; height: 35px; text-decoration: none; display: inline-flex; align-items: center; box-sizing: border-box;}
+        button:hover, .btn-link:hover { background-color: #003a5d; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .btn-back { background-color: #7f8c8d; }
+        .btn-back:hover { background-color: #636e72; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px;}
+        th { background-color: #005587; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .score-badge { padding: 5px 10px; border-radius: 15px; font-weight: bold; color: white; background-color: #2ecc71;}
+
+        /* --- ESTILOS DE LA CONSOLA DE DEBUG --- */
+        .debug-console { margin-top: 40px; background-color: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .console-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; }
+        .console-header h3 { margin: 0; color: #4CAF50; font-size: 15px; }
+        .console-actions { display: flex; gap: 8px; }
+        .btn-clear { background-color: #444; height: 25px; padding: 0 10px; font-size: 12px; }
+        .btn-download-log { background-color: #1769aa; height: 25px; padding: 0 10px; font-size: 12px; }
+        .btn-download-log:hover { background-color: #0d4f84; }
+        .log-container { max-height: 400px; overflow-y: auto; }
+        .log-entry { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #333; }
+        .log-time { color: #569cd6; font-size: 11px; margin-bottom: 5px;}
+        .log-title { font-weight: bold; color: #ce9178; margin-bottom: 5px; }
+        .log-title.error { color: #f44336; }
+        pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; color: #9cdcfe; }
+
+        /* Controles de DataTables: paginación, filtro en tiempo real y exportación. */
+        .dataTables_wrapper { margin-top: 12px; }
+        .dt-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0 10px; }
+        .dt-toolbar .dataTables_length, .dt-toolbar .dataTables_filter { margin: 0; }
+        .dt-toolbar .dataTables_filter input { width: 235px; margin-left: 8px; padding: 8px 10px; border: 1px solid #bcc8e8; border-radius: 18px; background: #e9eefb; outline: 0; }
+        .dt-toolbar .dataTables_length select { margin: 0 5px; padding: 5px 22px 5px 8px; border: 1px solid #bcc8e8; border-radius: 5px; }
+        .dt-buttons { display: flex; gap: 5px; }
+        .dt-buttons .dt-button { min-width: 30px; height: 30px; padding: 4px 8px; border: 0; border-radius: 4px; color: #fff !important; font-size: 15px; line-height: 20px; text-shadow: none; }
+        .dt-buttons .buttons-copy { background: #0b6073; }
+        .dt-buttons .buttons-excel { background: #18854b; }
+        .dt-buttons .buttons-csv { background: #d39a00; }
+        .dt-buttons .buttons-pdf { background: #c92b2b; }
+        .dt-buttons .dt-button:hover { filter: brightness(.9); }
+        .dataTables_info { padding-top: 16px !important; font-weight: 600; }
+        .dataTables_paginate { padding-top: 12px !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 5px 10px; border: 1px solid #ddd; border-radius: 3px; color: #e33 !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { border-color: #ff4850; background: #ff4850; color: #fff !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover { border-color: #005587; background: #005587; color: #fff !important; }
+
+        @media (max-width: 700px) {
+            body { padding: 8px; }
+            .card { padding: 18px 12px; }
+            .console-header { align-items: flex-start; flex-direction: column; }
+            .dt-toolbar { align-items: flex-start; flex-direction: column; }
+            .dt-toolbar .dataTables_filter input { width: 190px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="header-actions">
+            <h2>Consulta de Resultados (Candidate Results)</h2>
+            <a href="index.html" class="btn-link btn-back">⬅ Volver al Calendario</a>
+        </div>
+        
+        <!-- Fila 1: Datos principales -->
+        <div class="form-row">
+            <div class="form-group">
+                <label>Token OAuth:</label>
+                <button id="btnToken">1. Validar Acceso</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="required">Centro:</label>
+                <input type="text" id="centreNumber" value="MX026" style="width: 80px;">
+            </div>
+
+            <div class="form-group">
+                <!-- Se quitó la clase "required" -->
+                <label>No. de Candidato:</label>
+                <input type="text" id="candidateNumber" placeholder="Ej. 1234" style="width: 140px;">
+            </div>
+
+            <div class="form-group">
+                <label class="required">Código Evaluación (Assessment Code):</label>
+                <select id="assessmentCode" style="width: 280px;">
+                    <option value="">Selecciona un examen...</option>
+                    <option value="D401">Pre A1 Starters</option>
+                    <option value="D402">A1 Movers</option>
+                    <option value="D403">A2 Flyers</option>
+                    <option value="D431">B2 First</option>
+                    <option value="D432">B2 First for Schools</option>
+                    <option value="D435">C1 Advanced</option>
+                    <option value="D441">C2 Proficiency</option>
+                    <option value="D481">Delta Module One</option>
+                    <option value="D601">TKT Module 1</option>
+                    <option value="D602">TKT Module 2</option>
+                    <option value="D603">TKT Module 3</option>
+                    <option value="D604">TKT: CLIL</option>
+                    <option value="D606">TKT: YL</option>
+                    <option value="D721">A2 Key</option>
+                    <option value="D725">B1 Preliminary</option>
+                    <option value="D822">A2 Key for Schools</option>
+                    <option value="D826">B1 Preliminary for Schools</option>
+                    <option value="D911">TKT Digital Module 1</option>
+                    <option value="D912">TKT Digital Module 2</option>
+                    <option value="D913">TKT Digital Module 3</option>
+                    <option value="D914">TKT Digital: CLIL</option>
+                    <option value="D916">TKT Digital: YL</option>
+                    <option value="D923">A2 Key Digital</option>
+                    <option value="D924">A2 Key for Schools Digital</option>
+                    <option value="D927">B1 Preliminary Digital</option>
+                    <option value="D928">B1 Preliminary for Schools Digital</option>
+                    <option value="D933">B2 First Digital</option>
+                    <option value="D934">B2 First for Schools Digital</option>
+                    <option value="D936">C1 Advanced Digital</option>
+                    <option value="D942">C2 Proficiency Digital</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Fila 2: Nuevos filtros obligatorios -->
+        <div class="form-row">
+            <div class="form-group">
+                <label class="required">Fecha Examen (Key Assessment):</label>
+                <input type="date" id="keyAssessmentDay" style="width: 220px;">
+            </div>
+
+            <div class="form-group">
+                <label class="required">Turno (Sitting):</label>
+                <select id="sitting" style="width: 100px;">
+                    <option value="">Seleccione...</option>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                    <option value="EV">EV</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="required">Método de Entrega:</label>
+                <select id="deliveryMethod" style="width: 120px;">
+                    <option value="">Seleccione...</option>
+                    <option value="PB">PB (Paper)</option>
+                    <option value="CB">CB (Computer)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <button id="btnResults" disabled>2. Buscar Resultados</button>
+            </div>
+        </div>
+
+        <div id="resultsContainer" style="display: none;">
+            <h3>Resultados Encontrados:</h3>
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Candidato (No.)</th>
+                        <th>Centro de Preparación</th>
+                        <th>Examen (Fecha)</th>
+                        <th>Puntaje Global</th>
+                        <th>Resultado</th>
+                        <!-- Nuevas 4 columnas para habilidades -->
+                        <th>Reading</th>
+                        <th>Writing</th>
+                        <th>Listening</th>
+                        <th>Speaking</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <!-- Los resultados se inyectarán aquí -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CONSOLA DE DEBUG -->
+        <div class="debug-console">
+            <div class="console-header">
+                <h3>🛠️ Consola de Depuración (JSON)</h3>
+                <div class="console-actions">
+                    <button id="btnDownloadLog" class="btn-download-log" type="button">Descargar TXT</button>
+                    <button id="btnClearLog" class="btn-clear" type="button">Limpiar Consola</button>
+                </div>
+            </div>
+            <div id="logContainer" class="log-container">
+                <!-- Los logs aparecerán aquí -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependencias de DataTables y sus botones de exportación. -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+
+    <script>
+        let currentAccessToken = null;
+        let resultsDataTable = null;
+
+        function destroyResultsDataTable() {
+            if (resultsDataTable) {
+                resultsDataTable.destroy();
+                resultsDataTable = null;
+            }
+        }
+
+        function initializeResultsDataTable() {
+            if (resultsDataTable) resultsDataTable.destroy();
+
+            resultsDataTable = $('#resultsTable').DataTable({
+                pageLength: 5,
+                lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
+                order: [[0, 'asc']],
+                scrollX: true,
+                dom: '<"dt-toolbar"<"dt-length"l><"dt-buttons"B><"dt-search"f>>rt<"dt-footer"ip>',
+                buttons: [
+                    { extend: 'copyHtml5', text: '📋', titleAttr: 'Copiar', className: 'buttons-copy', exportOptions: { columns: ':visible' } },
+                    { extend: 'excelHtml5', text: '📗', titleAttr: 'Exportar a Excel', title: 'Resultados de Candidatos', className: 'buttons-excel', exportOptions: { columns: ':visible' } },
+                    { extend: 'csvHtml5', text: '📙', titleAttr: 'Exportar a CSV', title: 'Resultados de Candidatos', className: 'buttons-csv', bom: true, exportOptions: { columns: ':visible' } },
+                    { extend: 'pdfHtml5', text: '📕', titleAttr: 'Exportar a PDF', title: 'Resultados de Candidatos', className: 'buttons-pdf', orientation: 'landscape', pageSize: 'A4', exportOptions: { columns: ':visible' } }
+                ],
+                language: {
+                    processing: 'Procesando...',
+                    lengthMenu: 'Mostrar _MENU_',
+                    zeroRecords: 'No se encontraron resultados',
+                    emptyTable: 'No hay resultados disponibles',
+                    info: 'Registros _START_ a _END_ de un total de _TOTAL_.',
+                    infoEmpty: 'Registros 0 a 0 de un total de 0.',
+                    infoFiltered: '(filtrado de _MAX_ registros)',
+                    search: 'Filtrar:',
+                    paginate: { first: 'Primero', previous: 'Anterior', next: 'Siguiente', last: 'Último' }
+                }
+            });
+
+            $('#resultsTable_filter input')
+                .attr('placeholder', 'Buscar en la tabla...')
+                .attr('aria-label', 'Filtrar resultados');
+        }
+
+        function downloadLogAsTxt() {
+            const entries = [...document.querySelectorAll('#logContainer .log-entry')]
+                .map(entry => entry.innerText.trim())
+                .filter(Boolean);
+
+            if (!entries.length) {
+                alert('No hay registros en la consola para descargar.');
+                return;
+            }
+
+            const blob = new Blob([entries.join('\n\n' + '='.repeat(80) + '\n\n')], {
+                type: 'text/plain;charset=utf-8'
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.href = url;
+            link.download = `cambridge-api-log-${timestamp}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById('btnClearLog').addEventListener('click', () => {
+            document.getElementById('logContainer').innerHTML = '';
+        });
+
+        document.getElementById('btnDownloadLog').addEventListener('click', downloadLogAsTxt);
+
+        function logToConsole(title, data, isError = false) {
+            const container = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const titleClass = isError ? 'log-title error' : 'log-title';
+            const icon = isError ? '❌' : '✅';
+            
+            let formattedData = '';
+            try {
+                formattedData = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+            } catch (e) {
+                formattedData = data;
+            }
+
+            logEntry.innerHTML = `
+                <div class="log-time">[${time}]</div>
+                <div class="${titleClass}">${icon} ${title}</div>
+                <pre>${formattedData}</pre>
+            `;
+            
+            container.prepend(logEntry);
+        }
+
+        document.getElementById('btnToken').addEventListener('click', async () => {
+            const btn = document.getElementById('btnToken');
+            btn.textContent = 'Validando...';
+            try {
+                const res = await fetch('get_token_results.php');
+                const data = await res.json();
+                
+                logToConsole('Respuesta Token OAuth', data, !data.access_token);
+
+                if (data.access_token) {
+                    currentAccessToken = data.access_token;
+                    btn.textContent = 'Acceso OK ✓';
+                    btn.style.backgroundColor = '#2ecc71';
+                    document.getElementById('btnResults').disabled = false;
+                }
+            } catch (error) {
+                btn.textContent = 'Error';
+                btn.style.backgroundColor = '#e74c3c';
+                logToConsole('Error JS al pedir Token', error.message, true);
+            }
+        });
+
+        document.getElementById('btnResults').addEventListener('click', async () => {
+            const btn = document.getElementById('btnResults');
+            
+            const centreNumber = document.getElementById('centreNumber').value;
+            const candidateNumber = document.getElementById('candidateNumber').value; 
+            const assessmentCode = document.getElementById('assessmentCode').value; 
+            const keyAssessmentDay = document.getElementById('keyAssessmentDay').value;
+            const sitting = document.getElementById('sitting').value;
+            const deliveryMethod = document.getElementById('deliveryMethod').value;
+            
+            // Validaciones estrictas basadas en la documentación de Cambridge
+            if (!centreNumber) { alert("Ingresa el Número de Centro."); return; }
+            if (!assessmentCode) { alert("El Código de Evaluación (Assessment Code) es obligatorio."); return; }
+            if (!keyAssessmentDay) { alert("La Fecha de Examen (Key Assessment Day) es obligatoria."); return; }
+            if (!sitting) { alert("El Turno (Sitting) es obligatorio (AM, PM o EV)."); return; }
+            if (!deliveryMethod) { alert("El Método de Entrega (Delivery Method) es obligatorio (PB o CB)."); return; }
+
+            btn.textContent = 'Buscando...';
+
+            const payload = {
+                access_token: currentAccessToken,
+                centreNumber: centreNumber,
+                centreCandidateNumber: candidateNumber, // Se enviará vacío si es opcional
+                assessmentCode: assessmentCode,
+                keyAssessmentDay: keyAssessmentDay,
+                sitting: sitting,
+                deliveryMethod: deliveryMethod
+            };
+
+            logToConsole('Payload enviado a get_results.php', payload);
+
+            try {
+                const response = await fetch('get_results.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                logToConsole('Respuesta de Candidate Results API', data, data.error ? true : false);
+
+                const tbody = document.getElementById('resultsBody');
+                destroyResultsDataTable();
+                tbody.innerHTML = ''; 
+                
+                if (data && data.candidateResults && data.candidateResults.length > 0) {
+                    document.getElementById('resultsContainer').style.display = 'block';
+                    
+                    // 1. Agrupar los resultados por Número de Candidato
+                    const candidatosAgrupados = {};
+                    
+                    data.candidateResults.forEach(res => {
+                        const idCandidato = res.centreCandidateNumber;
+                        
+                        // Si el candidato no existe en nuestro objeto, lo inicializamos
+                        if (!candidatosAgrupados[idCandidato]) {
+                            candidatosAgrupados[idCandidato] = {
+                                fullName: `${res.candidateName} ${res.candidateFamilyName}`,
+                                candNumber: res.centreCandidateNumber,
+                                //urn: res["URN - Reference Number"],
+                                prepCentre: res.preparationCentre || 'N/A',
+                                examName: res.qualification?.assessmentDescription || 'N/A',
+                                examDate: res.keyAssessmentDate || 'N/A',
+                                overallScore: res.results?.overallScore || '-',
+                                overallResult: res.results?.overallResult || '-',
+                                cefrLevel: res.results?.CEFRLevel || '-',
+                                indicator: res.results?.PassorFailIndicator || '-',
+                                // Preparamos las 4 habilidades vacías
+                                skills: {
+                                    Reading: '-',
+                                    Writing: '-',
+                                    Listening: '-',
+                                    Speaking: '-'
+                                }
+                            };
+                        }
+                        
+                        // Extraemos la habilidad individual y la asignamos a su columna
+                        if (res.results?.componentList) {
+                            const skillName = res.results.componentList.componentDescription;
+                            const score = res.results.componentList.grade;
+                            
+                            // Usamos includes() por si Cambridge manda nombres compuestos como "Reading and Use of English"
+                            if (skillName.includes('Reading')) {
+                                candidatosAgrupados[idCandidato].skills.Reading = score;
+                            } else if (skillName.includes('Writing')) {
+                                candidatosAgrupados[idCandidato].skills.Writing = score;
+                            } else if (skillName.includes('Listening')) {
+                                candidatosAgrupados[idCandidato].skills.Listening = score;
+                            } else if (skillName.includes('Speaking')) {
+                                candidatosAgrupados[idCandidato].skills.Speaking = score;
+                            }
+                        }
+                    });
+
+                    // 2. Renderizar la tabla con los datos agrupados
+                    Object.values(candidatosAgrupados).forEach(cand => {
+                        const tr = document.createElement('tr');
+                        const badgeColor = cand.indicator === 'PASS' ? '#2ecc71' : '#e74c3c';
+
+                        tr.innerHTML = `
+                            <td>
+                                <strong>${cand.fullName}</strong><br>
+                                <span style="font-size: 12px; color: #666; font-style: italic;">No. ${cand.candNumber}</span>
+                            </td>
+                            <td>${cand.prepCentre}</td>
+                            <td>
+                                ${cand.examName}<br>
+                                <span style="font-size: 12px; color: #666; font-style: italic;">${cand.examDate}</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="score-badge" style="background-color: ${badgeColor}; font-size: 16px;">
+                                    ${cand.overallScore}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>${cand.overallResult}</strong><br>
+                                <span style="font-size: 12px; color: #666; font-style: italic;">CEFR Level: ${cand.cefrLevel}</span>
+                            </td>
+                            <!-- Inyección de las 4 columnas de habilidades -->
+                            <td style="text-align: center;"><strong>${cand.skills.Reading}</strong></td>
+                            <td style="text-align: center;"><strong>${cand.skills.Writing}</strong></td>
+                            <td style="text-align: center;"><strong>${cand.skills.Listening}</strong></td>
+                            <td style="text-align: center;"><strong>${cand.skills.Speaking}</strong></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    initializeResultsDataTable();
+                } else {
+                    destroyResultsDataTable();
+                    alert("No se encontraron resultados. Revisa la consola para más detalles.");
+                    document.getElementById('resultsContainer').style.display = 'none';
+                }
+            } catch (error) {
+                console.error(error);
+                logToConsole('Error JS al pedir Resultados', error.message, true);
+                alert("Error al conectar con la API de resultados.");
+            } finally {
+                btn.textContent = '2. Buscar Resultados';
+            }
+        });
+    </script>
+</body>
+</html>
