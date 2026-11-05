@@ -143,8 +143,12 @@
                         <th>Centro de Preparación</th>
                         <th>Examen (Fecha)</th>
                         <th>Puntaje Global</th>
-                        <th>Resultado (Nivel)</th>
-                        <th>Desglose de Habilidades</th>
+                        <th>Resultado</th>
+                        <!-- Nuevas 4 columnas para habilidades -->
+                        <th>Reading</th>
+                        <th>Writing</th>
+                        <th>Listening</th>
+                        <th>Speaking</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
@@ -265,7 +269,7 @@
                     data.candidateResults.forEach(res => {
                         const idCandidato = res.centreCandidateNumber;
                         
-                        // Si el candidato no existe en nuestro objeto, lo creamos
+                        // Si el candidato no existe en nuestro objeto, lo inicializamos
                         if (!candidatosAgrupados[idCandidato]) {
                             candidatosAgrupados[idCandidato] = {
                                 fullName: `${res.candidateName} ${res.candidateFamilyName}`,
@@ -278,31 +282,37 @@
                                 overallResult: res.results?.overallResult || '-',
                                 cefrLevel: res.results?.CEFRLevel || '-',
                                 indicator: res.results?.PassorFailIndicator || '-',
-                                skills: [] // Aquí guardaremos las materias
+                                // Preparamos las 4 habilidades vacías
+                                skills: {
+                                    Reading: '-',
+                                    Writing: '-',
+                                    Listening: '-',
+                                    Speaking: '-'
+                                }
                             };
                         }
                         
-                        // Insertamos la habilidad individual en el arreglo del candidato
+                        // Extraemos la habilidad individual y la asignamos a su columna
                         if (res.results?.componentList) {
-                            candidatosAgrupados[idCandidato].skills.push({
-                                name: res.results.componentList.componentDescription,
-                                score: res.results.componentList.grade
-                            });
+                            const skillName = res.results.componentList.componentDescription;
+                            const score = res.results.componentList.grade;
+                            
+                            // Usamos includes() por si Cambridge manda nombres compuestos como "Reading and Use of English"
+                            if (skillName.includes('Reading')) {
+                                candidatosAgrupados[idCandidato].skills.Reading = score;
+                            } else if (skillName.includes('Writing')) {
+                                candidatosAgrupados[idCandidato].skills.Writing = score;
+                            } else if (skillName.includes('Listening')) {
+                                candidatosAgrupados[idCandidato].skills.Listening = score;
+                            } else if (skillName.includes('Speaking')) {
+                                candidatosAgrupados[idCandidato].skills.Speaking = score;
+                            }
                         }
                     });
 
                     // 2. Renderizar la tabla con los datos agrupados
                     Object.values(candidatosAgrupados).forEach(cand => {
                         const tr = document.createElement('tr');
-                        
-                        // Formatear el desglose de habilidades (Ej: "Reading: 132 <br> Writing: 148")
-                        const skillsHtml = cand.skills.map(skill => 
-                            `<span style="font-size: 12px; display: block; margin-bottom: 2px;">
-                                <b>${skill.name}:</b> ${skill.score}
-                             </span>`
-                        ).join('');
-
-                        // Determinar color del badge principal (Verde si pasa, Rojo si falla)
                         const badgeColor = cand.indicator === 'PASS' ? '#2ecc71' : '#e74c3c';
 
                         tr.innerHTML = `
@@ -324,9 +334,11 @@
                                 <strong>${cand.overallResult}</strong><br>
                                 <span style="font-size: 12px; color: #666;">CEFR: ${cand.cefrLevel}</span>
                             </td>
-                            <td>
-                                ${skillsHtml}
-                            </td>
+                            <!-- Inyección de las 4 columnas de habilidades -->
+                            <td style="text-align: center;"><strong>${cand.skills.Reading}</strong></td>
+                            <td style="text-align: center;"><strong>${cand.skills.Writing}</strong></td>
+                            <td style="text-align: center;"><strong>${cand.skills.Listening}</strong></td>
+                            <td style="text-align: center;"><strong>${cand.skills.Speaking}</strong></td>
                         `;
                         tbody.appendChild(tr);
                     });
