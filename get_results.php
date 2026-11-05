@@ -8,7 +8,7 @@ $input = json_decode($inputJSON, TRUE);
 
 $access_token = $input['access_token'] ?? '';
 $centreNumber = $input['centreNumber'] ?? '';
-$candidateNumber = $input['candidateNumber'] ?? '';
+$centreCandidateNumber = $input['centreCandidateNumber'] ?? '';
 $assessmentCode = $input['assessmentCode'] ?? '';
 $keyAssessmentDay = $input['keyAssessmentDay'] ?? '';
 $sitting = $input['sitting'] ?? '';
@@ -24,9 +24,8 @@ if (empty($access_token)) {
 // ========================================================================
 $apiUrl = "https://apis.cambridgeassessment.org.uk/ce/v1/results?centreNumber={$centreNumber}";
 
-// Ahora candidateNumber se agrega dinámicamente solo si el usuario lo escribió
-if (!empty($candidateNumber)) {
-    $apiUrl .= "&centreCandidateNumber={$candidateNumber}";
+if (!empty($centreCandidateNumber)) {
+    $apiUrl .= "&centreCandidateNumber={$centreCandidateNumber}";
 }
 if (!empty($keyAssessmentDay)) {
     $apiUrl .= "&keyAssessmentDay={$keyAssessmentDay}";

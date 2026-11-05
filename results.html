@@ -232,7 +232,7 @@
             const payload = {
                 access_token: currentAccessToken,
                 centreNumber: centreNumber,
-                candidateNumber: candidateNumber, // Se enviará vacío si el usuario no pone nada
+                centreCandidateNumber: document.getElementById('candidateNumber').value, // <-- CAMBIO AQUÍ
                 assessmentCode: assessmentCode,
                 keyAssessmentDay: keyAssessmentDay,
                 sitting: document.getElementById('sitting').value,
