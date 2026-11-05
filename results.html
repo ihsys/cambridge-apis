@@ -60,13 +60,15 @@
             </div>
 
             <div class="form-group">
-                <label class="required">No. de Candidato:</label>
+                <!-- Se quitó la clase "required" -->
+                <label>No. de Candidato:</label>
                 <input type="text" id="candidateNumber" placeholder="Ej. 1234" style="width: 140px;">
             </div>
 
             <div class="form-group">
-                <label>Código Evaluación:</label>
-                <input type="text" id="assessmentCode" placeholder="Ej. D401" style="width: 130px;">
+                <!-- Se agregó la clase "required" -->
+                <label class="required">Código Evaluación (Assessment Code):</label>
+                <input type="text" id="assessmentCode" placeholder="Ej. D401" style="width: 200px;">
             </div>
         </div>
 
@@ -134,7 +136,6 @@
     <script>
         let currentAccessToken = null;
 
-        // --- FUNCIÓN HELPER PARA LA CONSOLA ---
         function logToConsole(title, data, isError = false) {
             const container = document.getElementById('logContainer');
             const time = new Date().toLocaleTimeString();
@@ -157,10 +158,8 @@
                 <pre>${formattedData}</pre>
             `;
             
-            // Inserta el nuevo log al principio para no tener que hacer scroll hacia abajo
             container.prepend(logEntry);
         }
-        // ---------------------------------------
 
         document.getElementById('btnToken').addEventListener('click', async () => {
             const btn = document.getElementById('btnToken');
@@ -169,7 +168,6 @@
                 const res = await fetch('get_token_results.php');
                 const data = await res.json();
                 
-                // Imprimir en consola de debug
                 logToConsole('Respuesta Token OAuth', data, !data.access_token);
 
                 if (data.access_token) {
@@ -189,11 +187,13 @@
             const btn = document.getElementById('btnResults');
             
             const centreNumber = document.getElementById('centreNumber').value;
-            const candidateNumber = document.getElementById('candidateNumber').value;
+            const candidateNumber = document.getElementById('candidateNumber').value; // Ahora es opcional
+            const assessmentCode = document.getElementById('assessmentCode').value; // Ahora es obligatorio
             const keyAssessmentDay = document.getElementById('keyAssessmentDay').value;
             
+            // Validaciones actualizadas
             if (!centreNumber) { alert("Ingresa el Número de Centro."); return; }
-            if (!candidateNumber) { alert("Ingresa un Número de Candidato."); return; }
+            if (!assessmentCode) { alert("El Código de Evaluación (Assessment Code) es obligatorio."); return; }
             if (!keyAssessmentDay) { alert("La Fecha de Examen (Key Assessment Day) es obligatoria."); return; }
 
             btn.textContent = 'Buscando...';
@@ -201,14 +201,13 @@
             const payload = {
                 access_token: currentAccessToken,
                 centreNumber: centreNumber,
-                candidateNumber: candidateNumber,
-                assessmentCode: document.getElementById('assessmentCode').value,
+                candidateNumber: candidateNumber, // Se enviará vacío si el usuario no pone nada
+                assessmentCode: assessmentCode,
                 keyAssessmentDay: keyAssessmentDay,
                 sitting: document.getElementById('sitting').value,
                 deliveryMethod: document.getElementById('deliveryMethod').value
             };
 
-            // Imprimir payload enviado a PHP
             logToConsole('Payload enviado a get_results.php', payload);
 
             try {
@@ -220,7 +219,6 @@
                 
                 const data = await response.json();
                 
-                // Imprimir respuesta de Cambridge en consola de debug
                 logToConsole('Respuesta de Candidate Results API', data, data.error ? true : false);
 
                 const tbody = document.getElementById('resultsBody');
@@ -232,8 +230,8 @@
                     data.results.forEach(res => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td>${res.candidateName || 'N/A'} (${res.candidateNumber})</td>
-                            <td>${res.assessmentName || res.assessmentCode}</td>
+                            <td>${res.candidateName || 'N/A'} (${res.candidateNumber || '-'})</td>
+                            <td>${res.assessmentName || res.assessmentCode || '-'}</td>
                             <td>${res.examDate || 'N/A'}</td>
                             <td><span class="score-badge">${res.overallScore || '-'}</span></td>
                             <td><strong>${res.grade || res.result || 'Pendiente'}</strong></td>
@@ -241,7 +239,7 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    alert("No se encontraron resultados para este candidato. Revisa la consola para más detalles.");
+                    alert("No se encontraron resultados. Revisa la consola para más detalles.");
                     document.getElementById('resultsContainer').style.display = 'none';
                 }
             } catch (error) {
