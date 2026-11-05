@@ -34,6 +34,12 @@ if (!empty($keyAssessmentDay)) {
 if (!empty($assessmentCode)) {
     $apiUrl .= "&assessmentCode={$assessmentCode}";
 }
+if (!empty($sitting)) {
+    $apiUrl .= "&sitting={$sitting}";
+}
+if (!empty($deliveryMethod)) {
+    $apiUrl .= "&deliveryMethod={$deliveryMethod}";
+}
 
 $ch = curl_init($apiUrl);
 
