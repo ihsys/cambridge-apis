@@ -80,7 +80,7 @@
                 <select id="examType">
                     <option value="SCHEDULED">SCHEDULED</option>
                     <option value="ON-DEMAND">ON-DEMAND</option>
-                    <option value="COMPUTER BASED">COMPUTER BASED</option>
+                    <!-- <option value="COMPUTER BASED">COMPUTER BASED</option> -->
                     <option value="DIGITAL">DIGITAL</option>
                 </select>
             </div>
@@ -207,7 +207,7 @@
         const configParams = {
             'ON-DEMAND': { show: ['boxAssessment', 'boxStartDate', 'boxEndDate'], required: ['lblAssessment', 'lblStartDate', 'lblEndDate'] },
             'SCHEDULED': { show: ['boxAssessment', 'boxYear', 'boxSitting'], required: [] },
-            'COMPUTER BASED': { show: ['boxAssessment', 'boxYear', 'boxSitting'], required: [] },
+            //'COMPUTER BASED': { show: ['boxAssessment', 'boxYear', 'boxSitting'], required: [] },
             'DIGITAL': { show: ['boxAssessment', 'boxYear', 'boxStartDate', 'boxEndDate'], required: ['lblAssessment', 'lblYear', 'lblStartDate', 'lblEndDate'] }
         };
 
